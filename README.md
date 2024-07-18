@@ -3,7 +3,7 @@
 
 对水泽进行了如下优化
 
-1、  调用长亭指纹识别工具xapp进行指纹识别，目前该工具只适配了Linux端，如需Windows端请自行修改\Plugins\infoGather\webInfo\Xapp
+1、  调用长亭指纹识别工具xapp进行指纹识别，目前该工具只适配了Linux端，如需Windows端请自行修改\Plugins\infoGather\webInfo\Xapp，指纹规则目前是护网专用hvv.txt，如需使用全部规则请修改为full.txt
 
 2、不使用fofa、hunter等进行C端扫描
 
