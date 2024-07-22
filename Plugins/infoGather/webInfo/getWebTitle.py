@@ -65,7 +65,7 @@ def get_web_title(url):     # 返回存活的url和标题。即使状态码不�
 # 探测后台地址
 def detect_background(url_path):
     alive, webCode, webTitle = get_web_title(url_path)
-    if alive:
+    if alive and webCode==200:
         return '[{}] {} {}'.format(webCode, url_path, webTitle)
     else:
         return ''
