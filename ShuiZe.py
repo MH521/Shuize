@@ -1475,7 +1475,7 @@ def is_cloudip(ip):
             return False
     except requests.RequestException as e:
         #print(f"An error occurred while getting IP info for {ip}: {e}")
-        return False
+        return True
 
 # 初始配置
 def _init():
