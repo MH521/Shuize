@@ -200,7 +200,7 @@ def Aiqicha(companyName):
 # 判断是否是泛解析
 def checkPanAnalysis():
     cprint('-' * 50 + 'check Pan-Analysis ...' + '-' * 50, 'green')
-    panDomain = 'sadfsadnxzjlkcxjvlkasdfasdf.{}'.format(domain)
+    panDomain = 'http://sadfsadnxzjlkcxjvlkasdfasdf.{}'.format(domain)
     try:
         dns_A_ips = [j for i in dns.resolver.query(panDomain, 'A').response.answer for j in i.items]
         print(dns_A_ips)
