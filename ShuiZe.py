@@ -9,6 +9,7 @@ import os
 # monkey.patch_all()
 import urllib3
 import openpyxl
+import time
 
 from Plugins.infoGather.subdomain.subdomainInterface.subdomainInterface import run_subdomainInterface
 
@@ -1160,13 +1161,14 @@ def run_cSubnet(CIP_List, Subdomains_ips, notCDNSubdomains, param_Links):
 
     for subdomain in notCDNSubdomains:
         for ip in Subdomains_ips[subdomain]: 
-            if not is_cloudip(ip):    #判断是否为云ip
-                SubdomainAndNotCDNIPs.append(ip)
+            # if not is_cloudip(ip):    #判断是否为云ip
+            SubdomainAndNotCDNIPs.append(ip)
     SubdomainAndNotCDNIPs = list(set(SubdomainAndNotCDNIPs))
 
-    # for ip in SubdomainAndNotCDNIPs: #判断是否为云ip
-    #     if is_cloudip(ip):
-    #         SubdomainAndNotCDNIPs.remove(ip)
+    for ip in SubdomainAndNotCDNIPs: #判断是否为云ip
+        time.sleep(1)
+        if is_cloudip(ip):
+            SubdomainAndNotCDNIPs.remove(ip)
     # 防止IP太多，导致查询次数过多被fofa封
     if len(SubdomainAndNotCDNIPs) > 10:
         SubdomainAndNotCDNIPs = []
