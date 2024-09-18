@@ -1,5 +1,3 @@
-# 调用各类插件获取子域名信息
-
 # -*- coding:utf-8 -*-
 
 
@@ -12,7 +10,6 @@ import openpyxl
 import time
 
 from Plugins.infoGather.subdomain.subdomainInterface.subdomainInterface import run_subdomainInterface
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from uuid import uuid4
 import dns.resolver
@@ -202,15 +199,38 @@ def Aiqicha(companyName):
 def checkPanAnalysis():
     cprint('-' * 50 + 'check Pan-Analysis ...' + '-' * 50, 'green')
     panDomain = 'http://sadfsadnxzjlkcxjvlkasdfasdf.{}'.format(domain)
-    try:
-        dns_A_ips = [j for i in dns.resolver.query(panDomain, 'A').response.answer for j in i.items]
-        print(dns_A_ips)
-        res = requests.head(panDomain, timeout=5)
-        if res.status_code >= 200 or dns_A_ips:
-            cprint('[泛解析] {} -> {}'.format(panDomain, dns_A_ips), 'red')
-            return True
-    except Exception as e:
-        cprint('[不是泛解析] :{}'.format(e.args), 'red')
+    # try:
+    #     dns_A_ips = [j for i in dns.resolver.query(panDomain, 'A').response.answer for j in i.items]
+    #     print(dns_A_ips)
+    #     res = requests.head(panDomain, timeout=5)
+    #     if res.status_code or dns_A_ips:
+    #         cprint('[泛解析] {} -> {}'.format(panDomain, dns_A_ips), 'red')
+    #         return True
+    # except Exception as e:
+    #     cprint('[不是泛解析] :{}'.format(e.args), 'red')
+    #     return False
+    def checkPanAnalysis1(panDomain):
+        try:
+            dns_A_ips = [j for i in dns.resolver.resolve(panDomain, 'A') for j in i]
+            print(dns_A_ips)
+            return bool(dns_A_ips)
+        except Exception as e:
+            print(f"DNS query error: {e}")
+            return False
+
+    def checkPanAnalysis2(panDomain):
+        try:
+            res = requests.head(panDomain, timeout=5)
+            return res.status_code >= 200
+        except Exception as e:
+            print(f"HTTP request error: {e}")
+            return False
+
+    if checkPanAnalysis1(panDomain) or checkPanAnalysis2(panDomain):
+        print('[泛解析]'.format(panDomain))
+        return True
+    else:
+        print('[不是泛解析]')
         return False
 
 
@@ -219,6 +239,7 @@ def checkPanAnalysis():
 def callKsubdomain():
     cprint('-' * 50 + 'Load ksubdomain ...' + '-' * 50, 'green')
     from Plugins.infoGather.subdomain.ksubdomain.ksubdomain import run_ksubdomain
+    
     ksubdomains = run_ksubdomain(domain)
     return ksubdomains
 
@@ -328,9 +349,12 @@ def SpiderSubdomain():
 def crawlCerts(subdomains):
     cprint('-' * 50 + 'Load crawlCerts ...' + '-' * 50, 'green')  # 启动证书爬虫
     from Plugins.infoGather.subdomain.Certs.crawlCerts import crawlCerts
-    certsSubdomains, trustedDomainDict, _newDomains = crawlCerts(domain, subdomains).run()
+    # certsSubdomains, trustedDomainDict, _newDomains = crawlCerts(domain, subdomains).run()
 
-    newDomains.extend(_newDomains)
+    # newDomains.extend(_newDomains)
+    certsSubdomains=[]
+    trustedDomainDict=[]
+
     # 保存到excel
     certSheet = saveToExcel(excelSavePath, excel, '证书')
     certSheet.saveCert(trustedDomainDict)
@@ -573,9 +597,9 @@ def run_webSpace(domain, SubdomainAndNotCDNIPs, CIP_List, fofaTitle):
         while not subdomainAndIP_Q.empty():
             subdomainOrIp = subdomainAndIP_Q.get()
             if isIP(subdomainOrIp):
-                query_str = 'ip="{}"'.format(subdomainOrIp)
+                query_str = 'country="CN"&&ip="{}"'.format(subdomainOrIp)
             else:
-                query_str = 'domain="{}"'.format(subdomainOrIp)
+                query_str = 'country="CN"&&domain="{}"'.format(subdomainOrIp)
             fofa_Results, fofa_web_host_port, fofa_service_host_port = fofaApi.query_ip(query_str)
             if fofa_Results:
                 webSpaceSheet.saveWebSpace('fofa', fofa_Results, query_str)  # 将网络空间搜索引擎的结果保存到webSpace项里
@@ -584,7 +608,7 @@ def run_webSpace(domain, SubdomainAndNotCDNIPs, CIP_List, fofaTitle):
                 webSpace_service_host_port.extend(fofa_service_host_port)
 
     run_fofa()
-    run_shodan()
+    #run_shodan()
     # run_quake()
     run_qianxin()
 
@@ -748,6 +772,7 @@ def collation_web_host(Subdomains_ips, webSpace_web_host_port, ip2domainSubdomai
 
         #web_host_port.append(host_port)
     web_host=[]
+    web_host_port = list(set(web_host_port))
     for subdomain in web_host_port:
         if ':' in subdomain:
             parts = subdomain.split(':')
@@ -759,8 +784,12 @@ def collation_web_host(Subdomains_ips, webSpace_web_host_port, ip2domainSubdomai
             web_host.append(subdomain)
 
 
+    web_host_port=[]
     web_host_port = list(set(web_host))    # 去重
     web_ip_list = list(set(web_ip_list))
+    if len(web_host_port)>=1000:
+        web_host_port=[]
+
 
     return web_host_port, web_ip_list
 
@@ -1072,14 +1101,17 @@ def run_subdomain():
 
 
     # 判断是否是泛解析
-    #isPanAnalysis = checkPanAnalysis()
+    isPanAnalysis = checkPanAnalysis()
 
     #if not isPanAnalysis and ksubdomain:
-    if  ksubdomain:
+    if  ksubdomain and not isPanAnalysis:
         # 0. 调用kSubdomain脚本
         ksubdomains = callKsubdomain()
     else:
         ksubdomains = []
+    
+    if len(ksubdomains) > 2000:
+        ksubdomains=[]
 
     print('[total: {}] ksubdomain: {}'.format(len(ksubdomains), ksubdomains))
     subdomains = printGetNewSubdomains([], ksubdomains)
@@ -1161,16 +1193,21 @@ def run_cSubnet(CIP_List, Subdomains_ips, notCDNSubdomains, param_Links):
 
     for subdomain in notCDNSubdomains:
         for ip in Subdomains_ips[subdomain]: 
+            # time.sleep(1)
             # if not is_cloudip(ip):    #判断是否为云ip
             SubdomainAndNotCDNIPs.append(ip)
     SubdomainAndNotCDNIPs = list(set(SubdomainAndNotCDNIPs))
 
+    SubdomainAndNotCDNIPs_tmp=[]
+
     for ip in SubdomainAndNotCDNIPs: #判断是否为云ip
         time.sleep(1)
-        if is_cloudip(ip):
-            SubdomainAndNotCDNIPs.remove(ip)
+        if not is_cloudip(ip):
+            SubdomainAndNotCDNIPs_tmp.append(ip)
     # 防止IP太多，导致查询次数过多被fofa封
-    if len(SubdomainAndNotCDNIPs) > 10:
+    SubdomainAndNotCDNIPs=[]
+    SubdomainAndNotCDNIPs=list(set(SubdomainAndNotCDNIPs_tmp))
+    if len(SubdomainAndNotCDNIPs) > 20:
         SubdomainAndNotCDNIPs = []
 
     # print(notCDNSubdomainIPs)
@@ -1451,26 +1488,33 @@ def checkVersion():
         print('获取版本信息失败...')
 
 def is_cloudip(ip):
-    url = f'http://site.ip138.com/{ip}/'
-    headers = {
-    'Host': 'site.ip138.com',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Priority': 'u=1',
-    'TE': 'trailers',
-    'Connection': 'close',
-}
+    url = f'https://sp0.baidu.com/8aQDcjqpAAV3otqbppnN2DJv/api.php?query={ip}&co=&resource_id=6006'
+#     headers = {
+#     'Host': 'site.ip138.com',
+#     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0',
+#     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+#     'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
+#     'Accept-Encoding': 'gzip, deflate, br',
+#     'Upgrade-Insecure-Requests': '1',
+#     'Sec-Fetch-Dest': 'document',
+#     'Sec-Fetch-Mode': 'navigate',
+#     'Sec-Fetch-Site': 'none',
+#     'Sec-Fetch-User': '?1',
+#     'Priority': 'u=1',
+#     'TE': 'trailers',
+#     'Connection': 'close',
+# }
     try:
-        response = requests.get(url,headers=headers, timeout=10)
+        response = requests.get(url, timeout=10)
+        json_data = response.json()
+        print(json_data)
+    # 提取参数值
+    # 假设你想提取的参数名为'your_parameter'
+        data = json_data.get('data', [])[0]
+        location = data.get('location')
+        
         # 检查HTTP响应状态码是否为200，并且响应内容中是否包含“云”
-        if response.status_code == 200 and '云' in response.text:
+        if response.status_code == 200 and '云' in location:
             #print(f"The IP {ip} is likely a cloud IP ")
             return True
         else:
@@ -1640,12 +1684,11 @@ def _init():
         cprint('Error： domain and cSubnet can only pass one', 'red')
         exit(0)
     elif domain and not cSubnet:        # 跑域名
-        isPanAnalysis = checkPanAnalysis()
-        if not isPanAnalysis:
-            cprint('-' * 50 + 'Start {} information collection'.format(domain) + '-' * 50, 'green')
-            excel_name = domain
-            excelSavePath = '{}/{}.xlsx'.format(save_fold_path, excel_name)
-            run_subdomain()
+        #isPanAnalysis = checkPanAnalysis()
+        cprint('-' * 50 + 'Start {} information collection'.format(domain) + '-' * 50, 'green')
+        excel_name = domain
+        excelSavePath = '{}/{}.xlsx'.format(save_fold_path, excel_name)
+        run_subdomain()
     elif not domain and cSubnet:        # 跑C段
         if isIntranet == 0:             # 外网C段
             cprint('-' * 50 + 'Start {} cSubnet collection'.format(cSubnet) + '-' * 50, 'green')
@@ -1703,16 +1746,14 @@ def _init():
                 newDomains = []
 
                 domain = each.strip()
-                isPanAnalysis = checkPanAnalysis()
-                if isPanAnalysis:
-                    continue
-                else:
-                    cprint('-' * 50 + 'Start {} information collection'.format(domain) + '-' * 50, 'green')
-                    excel_name = domain
-                    excelSavePath = '{}/{}.xlsx'.format(save_fold_path, excel_name)
-                    excel = openpyxl.Workbook()
-                    excel.remove(excel[excel.sheetnames[0]])  # 删除第一个默认的表
-                    run_subdomain()
+                #isPanAnalysis = checkPanAnalysis()
+                
+                cprint('-' * 50 + 'Start {} information collection'.format(domain) + '-' * 50, 'green')
+                excel_name = domain
+                excelSavePath = '{}/{}.xlsx'.format(save_fold_path, excel_name)
+                excel = openpyxl.Workbook()
+                excel.remove(excel[excel.sheetnames[0]])  # 删除第一个默认的表
+                run_subdomain()
     elif testDemo == 1:
         # 测试代码
         # domain = ''
