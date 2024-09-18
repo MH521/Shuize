@@ -7,7 +7,7 @@ def run_ksubdomain(domain):
     ksubdomain_file = '{}/{}.txt'.format(ksubdomain_folder, domain)
 
     os.system('chmod 777 ./Plugins/infoGather/subdomain/ksubdomain/ksubdomain_linux')
-    os.system('./Plugins/infoGather/subdomain/ksubdomain/ksubdomain_linux -d {} -o {}'.format(domain, ksubdomain_file))
+    os.system('./Plugins/infoGather/subdomain/ksubdomain/ksubdomain_linux -skip-wild -full -d {} -o {}'.format(domain, ksubdomain_file))
     try:
         with open(ksubdomain_file, 'rt') as f:
             for each_line in f.readlines():
